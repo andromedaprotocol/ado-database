@@ -1,7 +1,7 @@
 [package]
 name = "andromeda-multisig"
 version = "0.1.0"
-authors = ["daniel"]
+authors = ["Andromeda"]
 edition = "2021"
 
 exclude = [
