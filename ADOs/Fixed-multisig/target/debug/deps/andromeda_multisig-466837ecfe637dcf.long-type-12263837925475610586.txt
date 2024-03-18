@@ -1,1 +1,0 @@
-for<'a> fn(andromeda_std::common::context::ExecuteContext<'a>, msg::ExecuteMsg) -> std::result::Result<cosmwasm_std::Response, std::result::Result<error::ContractError, andromeda_std::error::ContractError>> {contract::handle_execute}
