@@ -13,17 +13,23 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Empty Rewards Per NFT")]
-    EmptyRewardsPerNFT {},
+    #[error("Empty Rewards Per Token")]
+    EmptyRewardsPerToken {},
 
-    #[error("Duplicated NFT")]
-    DuplicatedNFT {},
+    #[error("Duplicated Token")]
+    DuplicatedToken {},
 
     #[error("Reward should be non zero")]
     ZeroReward {},
 
+    #[error("Invalid Token")]
+    InvalidToken {},
+
     #[error("Unbonding Period should be longer than {min} seconds")]
     InvalidUnbondingPeriod { min: u64 },
+
+    #[error("Payout window should be longer than {min} seconds")]
+    InvalidPayoutWindow { min: u64 },
 }
 
 impl Into<AndromedaContractError> for ContractError {

@@ -1,7 +1,7 @@
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -9,16 +9,18 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 use crate::{
     error::ContractError,
+    execute,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query,
-    state::{set_rewards_per_nft, Config, CONFIG},
+    state::{set_rewards_per_token, Config, CONFIG},
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:nft-staking";
+const CONTRACT_NAME: &str = "crates.io:token-staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const MIN_UNBONDING_PERIOD: u64 = 10u64; // 10 seconds
+const MIN_PAYOUT_WINDOW: u64 = 1u64; // 1 second
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -51,11 +53,14 @@ pub fn instantiate(
         deps.storage,
         &Config {
             denom: msg.denom,
-            unbonding_period: andromeda_std::common::Milliseconds::from_seconds(unbonding_period),
+            unbonding_period: Milliseconds::from_seconds(unbonding_period),
+            payout_window: Milliseconds::from_seconds(
+                msg.payout_window.unwrap_or(MIN_PAYOUT_WINDOW),
+            ),
         },
     )?;
 
-    set_rewards_per_nft(deps.storage, msg.rewards_per_nft)?;
+    set_rewards_per_token(deps.storage, msg.rewards_per_token)?;
 
     Ok(resp
         .add_attribute("method", "instantiate")
@@ -88,7 +93,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
     )?;
 
     let res = match msg {
-        _ => ADOContract::default().execute(ctx, msg),
+        ExecuteMsg::Receive(msg) => execute::receive_cw721(ctx, msg),
+        _ => ADOContract::default()
+            .execute(ctx, msg)
+            .map_err(|err| err.into()),
     }?;
 
     Ok(res
@@ -101,6 +109,19 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(encode_binary(&query::query_config(deps)?)?),
+        QueryMsg::RewardsPerToken {} => Ok(encode_binary(&query::query_rewards_per_token(deps)?)?),
+        QueryMsg::StakerDetail { staker } => Ok(encode_binary(&query::query_staker_detail(
+            deps, env, staker,
+        )?)?),
+        QueryMsg::AssetDetail {
+            nft_address,
+            token_id,
+        } => Ok(encode_binary(&query::query_asset_detail(
+            deps,
+            env,
+            nft_address,
+            token_id,
+        )?)?),
         _ => Ok(ADOContract::default().query(deps, env, msg)?),
     }
 }
@@ -117,13 +138,14 @@ mod tests {
     };
 
     fn mock_instantiate_msg() -> InstantiateMsg {
-        let rewards_per_nft = vec![(MOCK_CONTRACT_ADDR.to_string(), 1u64)];
+        let rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 1u64)];
         InstantiateMsg {
             denom: "earth".to_string(),
-            rewards_per_nft,
+            rewards_per_token,
             unbonding_period: Some(100u64),
             kernel_address: "kernel".to_string(),
             owner: None,
+            payout_window: None,
         }
     }
     #[test]
@@ -170,11 +192,11 @@ mod tests {
         );
     }
     #[test]
-    fn test_instantiate_emtpy_rewards_per_nft() {
+    fn test_instantiate_emtpy_rewards_per_token() {
         let balance = vec![coin(1000u128, "earth")];
         let mut deps = mock_dependencies_with_balance(&balance);
         let mut msg = mock_instantiate_msg();
-        msg.rewards_per_nft = vec![];
+        msg.rewards_per_token = vec![];
         let err = instantiate(
             deps.as_mut(),
             mock_env(),
@@ -183,14 +205,14 @@ mod tests {
         )
         .unwrap_err();
 
-        assert_eq!(err, ContractError::EmptyRewardsPerNFT {});
+        assert_eq!(err, ContractError::EmptyRewardsPerToken {});
     }
     #[test]
-    fn test_instantiate_duplicated_rewards_per_nft() {
+    fn test_instantiate_duplicated_rewards_per_token() {
         let balance = vec![coin(1000u128, "earth")];
         let mut deps = mock_dependencies_with_balance(&balance);
         let mut msg = mock_instantiate_msg();
-        msg.rewards_per_nft
+        msg.rewards_per_token
             .push((MOCK_CONTRACT_ADDR.to_string(), 10u64));
         let err = instantiate(
             deps.as_mut(),
@@ -200,14 +222,14 @@ mod tests {
         )
         .unwrap_err();
 
-        assert_eq!(err, ContractError::DuplicatedNFT {});
+        assert_eq!(err, ContractError::DuplicatedToken {});
     }
     #[test]
-    fn test_instantiate_zero_reward_per_nft() {
+    fn test_instantiate_zero_reward_per_token() {
         let balance = vec![coin(1000u128, "earth")];
         let mut deps = mock_dependencies_with_balance(&balance);
         let mut msg = mock_instantiate_msg();
-        msg.rewards_per_nft = vec![(MOCK_CONTRACT_ADDR.to_string(), 0u64)];
+        msg.rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 0u64)];
         let err = instantiate(
             deps.as_mut(),
             mock_env(),

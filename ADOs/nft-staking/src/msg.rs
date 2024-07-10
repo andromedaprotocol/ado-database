@@ -6,20 +6,28 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Deps};
+use cw721::Cw721ReceiveMsg;
 
-use crate::error::ContractError;
+use crate::{error::ContractError, state::AssetDetail};
 
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
+    /// Reward denomiation
     pub denom: String,
-    pub rewards_per_nft: Vec<(String, u64)>,
+    /// List of (nft address, reward per window)
+    pub rewards_per_token: Vec<(String, u64)>,
+    /// optional unbonding period in seconds
     pub unbonding_period: Option<u64>,
+    /// optional payout window in seconds
+    pub payout_window: Option<u64>,
 }
 
 #[andr_exec]
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    Receive(Cw721ReceiveMsg),
+}
 
 #[andr_query]
 #[cw_serde]
@@ -29,6 +37,13 @@ pub enum QueryMsg {
     Config {},
     #[returns(RewardsPerTokenResponse)]
     RewardsPerToken {},
+    #[returns(StakerDetailResponse)]
+    StakerDetail { staker: String },
+    #[returns(AssetDetailResponse)]
+    AssetDetail {
+        nft_address: String,
+        token_id: String,
+    },
 }
 
 impl InstantiateMsg {
@@ -36,21 +51,28 @@ impl InstantiateMsg {
         // Validate reward token
         validate_denom(deps, self.denom.clone())?;
 
-        let mut nfts = HashSet::<String>::new();
-        for (nft, reward) in &self.rewards_per_nft {
-            ensure!(!nfts.contains(nft), ContractError::DuplicatedNFT {});
+        let mut tokens = HashSet::<String>::new();
+        for (token, reward) in &self.rewards_per_token {
+            ensure!(!tokens.contains(token), ContractError::DuplicatedToken {});
             ensure!(*reward != 0u64, ContractError::ZeroReward {});
-            nfts.insert(nft.to_string());
+            tokens.insert(token.to_string());
         }
 
-        // Rewards per nft data should not be empty
-        ensure!(!nfts.is_empty(), ContractError::EmptyRewardsPerNFT {});
+        // Rewards per token data should not be empty
+        ensure!(!tokens.is_empty(), ContractError::EmptyRewardsPerToken {});
 
-        // Unbonding period should be non zero
+        // Unbonding period should be ge than minimum unbonding period (which is 10)
         let unbonding_period = self.unbonding_period.unwrap_or(10u64);
         ensure!(
             unbonding_period >= 10,
             ContractError::InvalidUnbondingPeriod { min: 10u64 }
+        );
+
+        // Payout window should be ge than minimum payout window(1)
+        let payout_window = self.payout_window.unwrap_or(1u64);
+        ensure!(
+            payout_window >= 1u64,
+            ContractError::InvalidPayoutWindow { min: 1u64 }
         );
 
         Ok(())
@@ -66,4 +88,13 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct RewardsPerTokenResponse {
     pub rewards_per_token: Vec<(String, u64)>,
+}
+#[cw_serde]
+pub struct StakerDetailResponse {
+    pub assets: Vec<(String, String)>,
+    pub pending_rewards: u64,
+}
+#[cw_serde]
+pub struct AssetDetailResponse {
+    pub asset_detail: AssetDetail,
 }
