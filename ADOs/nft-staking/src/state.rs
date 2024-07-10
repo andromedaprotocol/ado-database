@@ -60,10 +60,7 @@ pub fn get_rewards_per_token(store: &dyn Storage) -> Result<Vec<(String, u64)>, 
         .collect())
 }
 
-pub fn get_staker_detail(
-    store: &dyn Storage,
-    staker: Addr,
-) -> Result<StakerDetail, ContractError> {
+pub fn get_staker_detail(store: &dyn Storage, staker: Addr) -> Result<StakerDetail, ContractError> {
     let staker_detail = STAKER_DETAILS.load(store, &staker)?;
     Ok(staker_detail)
 }

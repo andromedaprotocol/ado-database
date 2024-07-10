@@ -44,7 +44,7 @@ pub fn receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Respon
         asset_id,
         &AssetDetail {
             nft_address: nft_address.to_string(),
-            token_id,
+            token_id: token_id.clone(),
             unbonding_period: config.unbonding_period,
             pending_rewards: Uint64::zero(),
             last_payout: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -52,7 +52,11 @@ pub fn receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Respon
         },
     )?;
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("method", "receive_cw721")
+        .add_attribute("nft_address", nft_address.to_string())
+        .add_attribute("token_id", token_id)
+        .add_attribute("staker", staker))
 }
 
 pub fn asset_id(nft_address: impl Into<String>, token_id: String) -> (String, String) {
@@ -61,7 +65,11 @@ pub fn asset_id(nft_address: impl Into<String>, token_id: String) -> (String, St
 
 #[cfg(test)]
 mod tests {
-    use crate::{contract::instantiate, msg::InstantiateMsg, query::{query_asset_detail, query_config, query_staker_detail}};
+    use crate::{
+        contract::instantiate,
+        msg::InstantiateMsg,
+        query::{query_asset_detail, query_config, query_staker_detail},
+    };
 
     use super::*;
     use andromeda_std::testing::mock_querier::MOCK_ADO_PUBLISHER;
@@ -102,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_stake() {
-        let token_id =  "1".to_string();
+        let token_id = "1".to_string();
         let cw721_msg = Cw721ReceiveMsg {
             sender: STAKER.to_string(),
             token_id: token_id.clone(),
@@ -128,16 +136,25 @@ mod tests {
         );
 
         let config = query_config(deps.as_ref()).unwrap();
-        let res = query_asset_detail(deps.as_ref(), env.clone(), MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap();
+        let res = query_asset_detail(
+            deps.as_ref(),
+            env.clone(),
+            MOCK_CONTRACT_ADDR.to_string(),
+            token_id.clone(),
+        )
+        .unwrap();
         assert_eq!(res.asset_detail.pending_rewards.u64(), 0u64);
         assert_eq!(res.asset_detail.unbonding_period, config.unbonding_period);
         assert_eq!(res.asset_detail.unstaked_at, None);
-        assert_eq!(res.asset_detail.last_payout, Milliseconds::from_nanos(env.block.time.nanos()));
+        assert_eq!(
+            res.asset_detail.last_payout,
+            Milliseconds::from_nanos(env.block.time.nanos())
+        );
     }
 
     #[test]
     fn test_stake_invalid_token() {
-        let token_id =  "1".to_string();
+        let token_id = "1".to_string();
         let cw721_msg = Cw721ReceiveMsg {
             sender: STAKER.to_string(),
             token_id: token_id.clone(),
@@ -152,6 +169,6 @@ mod tests {
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
 
         let err = receive_cw721(ctx, cw721_msg).unwrap_err();
-        assert_eq!(err, ContractError::InvalidToken {  });
+        assert_eq!(err, ContractError::InvalidToken {});
     }
 }
