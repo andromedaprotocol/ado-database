@@ -11,6 +11,7 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     Ok(ConfigResponse {
         denom: config.denom,
         unbonding_period: config.unbonding_period,
+        payout_window: config.payout_window,
     })
 }
 
@@ -38,7 +39,7 @@ pub fn query_staker_detail(
             )
             .unwrap_or_default()
             .pending_rewards
-            .u64()
+            .u128()
         })
         .sum();
     Ok(StakerDetailResponse {

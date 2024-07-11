@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     /// Reward denomiation
     pub denom: String,
     /// List of (nft address, reward per window)
-    pub rewards_per_token: Vec<(String, u64)>,
+    pub rewards_per_token: Vec<(String, u128)>,
     /// optional unbonding period in seconds
     pub unbonding_period: Option<u64>,
     /// optional payout window in seconds
@@ -27,6 +27,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw721ReceiveMsg),
+    ClaimReward {
+        nft_address: String,
+        token_id: String,
+    },
 }
 
 #[andr_query]
@@ -54,7 +58,7 @@ impl InstantiateMsg {
         let mut tokens = HashSet::<String>::new();
         for (token, reward) in &self.rewards_per_token {
             ensure!(!tokens.contains(token), ContractError::DuplicatedToken {});
-            ensure!(*reward != 0u64, ContractError::ZeroReward {});
+            ensure!(*reward != 0u128, ContractError::ZeroReward {});
             tokens.insert(token.to_string());
         }
 
@@ -83,16 +87,17 @@ impl InstantiateMsg {
 pub struct ConfigResponse {
     pub denom: String,
     pub unbonding_period: Milliseconds,
+    pub payout_window: Milliseconds,
 }
 
 #[cw_serde]
 pub struct RewardsPerTokenResponse {
-    pub rewards_per_token: Vec<(String, u64)>,
+    pub rewards_per_token: Vec<(String, u128)>,
 }
 #[cw_serde]
 pub struct StakerDetailResponse {
     pub assets: Vec<(String, String)>,
-    pub pending_rewards: u64,
+    pub pending_rewards: u128,
 }
 #[cw_serde]
 pub struct AssetDetailResponse {

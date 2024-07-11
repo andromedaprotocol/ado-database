@@ -138,7 +138,7 @@ mod tests {
     };
 
     fn mock_instantiate_msg() -> InstantiateMsg {
-        let rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 1u64)];
+        let rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 1u128)];
         InstantiateMsg {
             denom: "earth".to_string(),
             rewards_per_token,
@@ -169,7 +169,7 @@ mod tests {
         let res = query::query_rewards_per_token(deps.as_ref()).unwrap();
         assert_eq!(
             res.rewards_per_token,
-            vec![(MOCK_CONTRACT_ADDR.to_string(), 1u64)]
+            vec![(MOCK_CONTRACT_ADDR.to_string(), 1u128)]
         );
     }
     #[test]
@@ -213,7 +213,7 @@ mod tests {
         let mut deps = mock_dependencies_with_balance(&balance);
         let mut msg = mock_instantiate_msg();
         msg.rewards_per_token
-            .push((MOCK_CONTRACT_ADDR.to_string(), 10u64));
+            .push((MOCK_CONTRACT_ADDR.to_string(), 10u128));
         let err = instantiate(
             deps.as_mut(),
             mock_env(),
@@ -229,7 +229,7 @@ mod tests {
         let balance = vec![coin(1000u128, "earth")];
         let mut deps = mock_dependencies_with_balance(&balance);
         let mut msg = mock_instantiate_msg();
-        msg.rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 0u64)];
+        msg.rewards_per_token = vec![(MOCK_CONTRACT_ADDR.to_string(), 0u128)];
         let err = instantiate(
             deps.as_mut(),
             mock_env(),
