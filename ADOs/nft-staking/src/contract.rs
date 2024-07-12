@@ -94,6 +94,14 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
     let res = match msg {
         ExecuteMsg::Receive(msg) => execute::receive_cw721(ctx, msg),
+        ExecuteMsg::ClaimReward {
+            nft_address,
+            token_id,
+        } => execute::claim_reward(ctx, nft_address, token_id),
+        ExecuteMsg::Unstake {
+            nft_address,
+            token_id,
+        } => execute::unstake(ctx, nft_address, token_id),
         _ => ADOContract::default()
             .execute(ctx, msg)
             .map_err(|err| err.into()),

@@ -25,6 +25,9 @@ pub enum ContractError {
     #[error("Invalid Token")]
     InvalidToken {},
 
+    #[error("Token already unstaked")]
+    AlreadyUnstaked {},
+
     #[error("Unbonding Period should be longer than {min} seconds")]
     InvalidUnbondingPeriod { min: u64 },
 

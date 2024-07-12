@@ -4,7 +4,7 @@ use cw721::Cw721ReceiveMsg;
 
 use crate::{
     state::{
-        get_staker_detail, process_pending_rewards, AssetDetail, ASSET_DETAILS,
+        get_asset_detail, get_staker_detail, process_pending_rewards, AssetDetail, ASSET_DETAILS,
         CONFIG, REWARDS_PER_TOKEN, STAKER_DETAILS,
     },
     ContractError,
@@ -97,6 +97,52 @@ pub fn claim_reward(
             amount: vec![coin(pending_rewards.u128(), denom)],
         })))
 }
+
+pub fn unstake(
+    ctx: ExecuteContext,
+    nft_address: String,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let staked_assets = get_staker_detail(deps.storage, info.sender.clone())?.assets;
+    let asset_id = (nft_address.clone(), token_id.clone());
+
+    // Ensure sender staked the asset
+    ensure!(
+        staked_assets.contains(&asset_id),
+        ContractError::Unauthorized {}
+    );
+
+    // asset_detail with pending_rewards calculated
+    let mut asset_detail = get_asset_detail(
+        deps.storage,
+        &env.block,
+        nft_address.clone(),
+        token_id.clone(),
+    )?;
+
+    // Can not unstake tokens that is already unstaked
+    ensure!(
+        asset_detail.unstaked_at.is_none(),
+        ContractError::AlreadyUnstaked {}
+    );
+
+    // Set unstaked_at and updated_at
+    let curr_time = Milliseconds::from_nanos(env.block.time.nanos());
+    asset_detail.updated_at = curr_time;
+    asset_detail.unstaked_at = Some(curr_time);
+
+    ASSET_DETAILS.save(deps.storage, asset_id, &asset_detail)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "unstake")
+        .add_attribute("nft_address", nft_address.to_string())
+        .add_attribute("token_id", token_id))
+}
+
 pub fn asset_id(nft_address: impl Into<String>, token_id: String) -> (String, String) {
     (nft_address.into(), token_id)
 }
@@ -322,5 +368,121 @@ mod tests {
         let err = claim_reward(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id).unwrap_err();
 
         assert_eq!(err, ContractError::ZeroReward {});
+    }
+
+    #[test]
+    fn test_unstake() {
+        let mut deps = inst();
+        let mut env = mock_env();
+        let config = query_config(deps.as_ref()).unwrap();
+
+        // STAKER stake token 1
+        let token_id = "1".to_string();
+        let cw721_msg = Cw721ReceiveMsg {
+            sender: STAKER.to_string(),
+            token_id: token_id.clone(),
+            msg: Binary::default(),
+        };
+
+        let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        receive_cw721(ctx, cw721_msg).unwrap();
+
+        // unstake
+        let info = mock_info(STAKER, &[]);
+        let window_cnt = Milliseconds::from_seconds(100).nanos() / config.payout_window.nanos();
+        let updated_at = env.block.time.nanos() + window_cnt * config.payout_window.nanos();
+
+        env.block.time = env.block.time.plus_seconds(100);
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let res = unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone());
+        assert!(res.is_ok(),);
+
+        let res = query_asset_detail(deps.as_ref(), env, MOCK_CONTRACT_ADDR.to_string(), token_id)
+            .unwrap();
+
+        assert_eq!(
+            res.asset_detail.pending_rewards.u128(),
+            window_cnt as u128 * 1u128
+        );
+        assert_eq!(
+            res.asset_detail.updated_at,
+            Milliseconds::from_nanos(updated_at)
+        );
+        assert_eq!(
+            res.asset_detail.unstaked_at.unwrap(),
+            Milliseconds::from_nanos(updated_at)
+        );
+    }
+
+    #[test]
+    fn test_unstake_unauthorized() {
+        let mut deps = inst();
+        let env = mock_env();
+
+        // STAKER stake token 1
+        let token_id = "1".to_string();
+        let cw721_msg = Cw721ReceiveMsg {
+            sender: STAKER.to_string(),
+            token_id: token_id.clone(),
+            msg: Binary::default(),
+        };
+
+        let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        receive_cw721(ctx, cw721_msg).unwrap();
+
+        // Other one stake token 2
+        let token_id = "2".to_string();
+        let cw721_msg = Cw721ReceiveMsg {
+            sender: "other".to_string(),
+            token_id: token_id.clone(),
+            msg: Binary::default(),
+        };
+
+        let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        receive_cw721(ctx, cw721_msg).unwrap();
+
+        // STAKER unstake other one's reward
+        let info = mock_info(STAKER, &[]);
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let err = unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_unstake_unstaked_token() {
+        let mut deps = inst();
+        let mut env = mock_env();
+
+        // STAKER stake token 1
+        let token_id = "1".to_string();
+        let cw721_msg = Cw721ReceiveMsg {
+            sender: STAKER.to_string(),
+            token_id: token_id.clone(),
+            msg: Binary::default(),
+        };
+
+        let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        receive_cw721(ctx, cw721_msg).unwrap();
+
+        // unstake
+        let info = mock_info(STAKER, &[]);
+        env.block.time = env.block.time.plus_seconds(100);
+        let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
+        unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap();
+
+        // unstake token again
+        env.block.time = env.block.time.plus_seconds(100);
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env);
+        let err = unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
+
+        assert_eq!(err, ContractError::AlreadyUnstaked {})
     }
 }

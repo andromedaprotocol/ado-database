@@ -31,6 +31,10 @@ pub enum ExecuteMsg {
         nft_address: String,
         token_id: String,
     },
+    Unstake {
+        nft_address: String,
+        token_id: String,
+    },
 }
 
 #[andr_query]
