@@ -31,6 +31,10 @@ pub enum ExecuteMsg {
         nft_address: String,
         token_id: String,
     },
+    ClaimAsset {
+        nft_address: String,
+        token_id: String,
+    },
     Unstake {
         nft_address: String,
         token_id: String,
@@ -61,7 +65,7 @@ impl InstantiateMsg {
 
         let mut tokens = HashSet::<String>::new();
         for (token, reward) in &self.rewards_per_token {
-            ensure!(!tokens.contains(token), ContractError::DuplicatedToken {});
+            ensure!(!tokens.contains(token), ContractError::DuplicatedAsset {});
             ensure!(*reward != 0u128, ContractError::ZeroReward {});
             tokens.insert(token.to_string());
         }

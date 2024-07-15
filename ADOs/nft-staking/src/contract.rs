@@ -102,6 +102,10 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             nft_address,
             token_id,
         } => execute::unstake(ctx, nft_address, token_id),
+        ExecuteMsg::ClaimAsset {
+            nft_address,
+            token_id,
+        } => execute::claim_asset(ctx, nft_address, token_id),
         _ => ADOContract::default()
             .execute(ctx, msg)
             .map_err(|err| err.into()),
@@ -230,7 +234,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert_eq!(err, ContractError::DuplicatedToken {});
+        assert_eq!(err, ContractError::DuplicatedAsset {});
     }
     #[test]
     fn test_instantiate_zero_reward_per_token() {

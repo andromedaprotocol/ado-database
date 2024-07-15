@@ -16,8 +16,8 @@ pub enum ContractError {
     #[error("Empty Rewards Per Token")]
     EmptyRewardsPerToken {},
 
-    #[error("Duplicated Token")]
-    DuplicatedToken {},
+    #[error("Duplicated Asset")]
+    DuplicatedAsset {},
 
     #[error("Reward should be non zero")]
     ZeroReward {},
@@ -25,8 +25,14 @@ pub enum ContractError {
     #[error("Invalid Token")]
     InvalidToken {},
 
-    #[error("Token already unstaked")]
-    AlreadyUnstaked {},
+    #[error("Assest already unstaked")]
+    AssetAlreadyUnstaked {},
+
+    #[error("Unstake the asset before claim")]
+    AssetNotUnkstaked {},
+
+    #[error("Asset is on unbonding period")]
+    AssetOnUnbondingPeriod {},
 
     #[error("Unbonding Period should be longer than {min} seconds")]
     InvalidUnbondingPeriod { min: u64 },
