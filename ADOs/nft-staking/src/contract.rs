@@ -123,6 +123,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::Config {} => Ok(encode_binary(&query::query_config(deps)?)?),
         QueryMsg::RewardsPerToken {} => Ok(encode_binary(&query::query_rewards_per_token(deps)?)?),
+        QueryMsg::Stakers {} => Ok(encode_binary(&query::query_stakers(deps)?)?),
         QueryMsg::StakerDetail { staker } => Ok(encode_binary(&query::query_staker_detail(
             deps, env, staker,
         )?)?),

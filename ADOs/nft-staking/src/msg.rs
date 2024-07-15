@@ -56,6 +56,8 @@ pub enum QueryMsg {
     Config {},
     #[returns(RewardsPerTokenResponse)]
     RewardsPerToken {},
+    #[returns(StakersResponse)]
+    Stakers {},
     #[returns(StakerDetailResponse)]
     StakerDetail { staker: String },
     #[returns(AssetDetailResponse)]
@@ -112,6 +114,10 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct RewardsPerTokenResponse {
     pub rewards_per_token: Vec<(String, u128)>,
+}
+#[cw_serde]
+pub struct StakersResponse {
+    pub stakers: Vec<String>,
 }
 #[cw_serde]
 pub struct StakerDetailResponse {

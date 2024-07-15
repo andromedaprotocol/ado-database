@@ -1,8 +1,11 @@
-use cosmwasm_std::{Addr, Deps, Env};
+use cosmwasm_std::{Addr, Deps, Env, Order};
 
 use crate::{
-    msg::{AssetDetailResponse, ConfigResponse, RewardsPerTokenResponse, StakerDetailResponse},
-    state::{get_asset_detail, get_rewards_per_token, get_staker_detail, CONFIG},
+    msg::{
+        AssetDetailResponse, ConfigResponse, RewardsPerTokenResponse, StakerDetailResponse,
+        StakersResponse,
+    },
+    state::{get_asset_detail, get_rewards_per_token, get_staker_detail, CONFIG, STAKER_DETAILS},
     ContractError,
 };
 
@@ -18,6 +21,14 @@ pub fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
 pub fn query_rewards_per_token(deps: Deps) -> Result<RewardsPerTokenResponse, ContractError> {
     let rewards_per_token = get_rewards_per_token(deps.storage)?;
     Ok(RewardsPerTokenResponse { rewards_per_token })
+}
+
+pub fn query_stakers(deps: Deps) -> Result<StakersResponse, ContractError> {
+    let stakers: Vec<String> = STAKER_DETAILS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .map(|staker| staker.unwrap().to_string())
+        .collect();
+    Ok(StakersResponse { stakers })
 }
 
 pub fn query_staker_detail(
