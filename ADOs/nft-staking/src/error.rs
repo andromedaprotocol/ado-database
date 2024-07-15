@@ -39,6 +39,9 @@ pub enum ContractError {
 
     #[error("Payout window should be longer than {min} seconds")]
     InvalidPayoutWindow { min: u64 },
+
+    #[error("Config is the same as previous one")]
+    DuplicatedConfig {},
 }
 
 impl Into<AndromedaContractError> for ContractError {

@@ -8,7 +8,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Deps};
 use cw721::Cw721ReceiveMsg;
 
-use crate::{error::ContractError, state::AssetDetail};
+use crate::{
+    config::{MIN_PAYOUT_WINDOW, MIN_UNBONDING_PERIOD},
+    error::ContractError,
+    state::AssetDetail,
+};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -38,6 +42,9 @@ pub enum ExecuteMsg {
     Unstake {
         nft_address: String,
         token_id: String,
+    },
+    UpdateConfig {
+        unbonding_period: u64,
     },
 }
 
@@ -73,18 +80,22 @@ impl InstantiateMsg {
         // Rewards per token data should not be empty
         ensure!(!tokens.is_empty(), ContractError::EmptyRewardsPerToken {});
 
-        // Unbonding period should be ge than minimum unbonding period (which is 10)
-        let unbonding_period = self.unbonding_period.unwrap_or(10u64);
+        // Unbonding period should be ge than minimum unbonding period
+        let unbonding_period = self.unbonding_period.unwrap_or(MIN_UNBONDING_PERIOD);
         ensure!(
-            unbonding_period >= 10,
-            ContractError::InvalidUnbondingPeriod { min: 10u64 }
+            unbonding_period >= MIN_UNBONDING_PERIOD,
+            ContractError::InvalidUnbondingPeriod {
+                min: MIN_UNBONDING_PERIOD
+            }
         );
 
-        // Payout window should be ge than minimum payout window(1)
-        let payout_window = self.payout_window.unwrap_or(1u64);
+        // Payout window should be ge than minimum payout window
+        let payout_window = self.payout_window.unwrap_or(MIN_PAYOUT_WINDOW);
         ensure!(
-            payout_window >= 1u64,
-            ContractError::InvalidPayoutWindow { min: 1u64 }
+            payout_window >= MIN_PAYOUT_WINDOW,
+            ContractError::InvalidPayoutWindow {
+                min: MIN_PAYOUT_WINDOW
+            }
         );
 
         Ok(())

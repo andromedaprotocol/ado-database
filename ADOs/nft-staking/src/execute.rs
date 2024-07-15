@@ -1,11 +1,16 @@
-use andromeda_std::common::{context::ExecuteContext, encode_binary, Milliseconds};
+use andromeda_std::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
+};
 use cosmwasm_std::{coin, ensure, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 
 use crate::{
+    config::MIN_UNBONDING_PERIOD,
+    query::query_config,
     state::{
-        get_asset_detail, get_staker_detail, process_pending_rewards, AssetDetail, StakerDetail,
-        ASSET_DETAILS, CONFIG, REWARDS_PER_TOKEN, STAKER_DETAILS,
+        get_asset_detail, get_staker_detail, process_pending_rewards, AssetDetail, Config,
+        StakerDetail, ASSET_DETAILS, CONFIG, REWARDS_PER_TOKEN, STAKER_DETAILS,
     },
     ContractError,
 };
@@ -215,6 +220,43 @@ pub fn claim_asset(
     }
 
     Ok(resp)
+}
+
+pub fn update_config(
+    ctx: ExecuteContext,
+    unbonding_period: u64,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    let is_owner =
+        ADOContract::default().is_contract_owner(deps.storage, &info.sender.to_string())?;
+    ensure!(is_owner, ContractError::Unauthorized {});
+
+    let config = query_config(deps.as_ref())?;
+
+    ensure!(
+        config.unbonding_period.seconds() != unbonding_period,
+        ContractError::DuplicatedConfig {}
+    );
+
+    ensure!(
+        unbonding_period >= MIN_UNBONDING_PERIOD,
+        ContractError::InvalidUnbondingPeriod {
+            min: MIN_UNBONDING_PERIOD
+        }
+    );
+
+    CONFIG.save(
+        deps.storage,
+        &Config {
+            denom: config.denom,
+            unbonding_period: Milliseconds::from_seconds(unbonding_period),
+            payout_window: config.payout_window,
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("method", "update_config")
+        .add_attribute("unbonding_period", unbonding_period.to_string()))
 }
 
 pub fn asset_id(nft_address: impl Into<String>, token_id: String) -> (String, String) {
@@ -703,5 +745,58 @@ mod tests {
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let err = claim_asset(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_update_config() {
+        let mut deps = inst();
+        let env = mock_env();
+
+        let info = mock_info(MOCK_ADO_PUBLISHER, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let res = update_config(ctx, MIN_UNBONDING_PERIOD);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_update_config_unauthorized() {
+        let mut deps = inst();
+        let env = mock_env();
+
+        let info = mock_info("anyone", &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let err = update_config(ctx, MIN_UNBONDING_PERIOD).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_update_config_duplicated_config() {
+        let mut deps = inst();
+        let env = mock_env();
+
+        let info = mock_info(MOCK_ADO_PUBLISHER, &[]);
+        let config = query_config(deps.as_ref()).unwrap();
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let err = update_config(ctx, config.unbonding_period.seconds()).unwrap_err();
+        assert_eq!(err, ContractError::DuplicatedConfig {});
+    }
+    #[test]
+    fn test_update_config_invalid_config() {
+        let mut deps = inst();
+        let env = mock_env();
+
+        let info = mock_info(MOCK_ADO_PUBLISHER, &[]);
+
+        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let err = update_config(ctx, MIN_UNBONDING_PERIOD - 1).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidUnbondingPeriod {
+                min: MIN_UNBONDING_PERIOD
+            }
+        );
     }
 }

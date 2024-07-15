@@ -8,6 +8,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 use crate::{
+    config::{MIN_PAYOUT_WINDOW, MIN_UNBONDING_PERIOD},
     error::ContractError,
     execute,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -19,9 +20,6 @@ use crate::{
 const CONTRACT_NAME: &str = "crates.io:token-staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MIN_UNBONDING_PERIOD: u64 = 10u64; // 10 seconds
-const MIN_PAYOUT_WINDOW: u64 = 1u64; // 1 second
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -32,8 +30,6 @@ pub fn instantiate(
     msg.validate(deps.as_ref())?;
 
     let contract = ADOContract::default();
-
-    let unbonding_period = msg.unbonding_period.unwrap_or(MIN_UNBONDING_PERIOD);
 
     let resp = contract.instantiate(
         deps.storage,
@@ -53,7 +49,9 @@ pub fn instantiate(
         deps.storage,
         &Config {
             denom: msg.denom,
-            unbonding_period: Milliseconds::from_seconds(unbonding_period),
+            unbonding_period: Milliseconds::from_seconds(
+                msg.unbonding_period.unwrap_or(MIN_UNBONDING_PERIOD),
+            ),
             payout_window: Milliseconds::from_seconds(
                 msg.payout_window.unwrap_or(MIN_PAYOUT_WINDOW),
             ),
@@ -106,6 +104,9 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             nft_address,
             token_id,
         } => execute::claim_asset(ctx, nft_address, token_id),
+        ExecuteMsg::UpdateConfig { unbonding_period } => {
+            execute::update_config(ctx, unbonding_period)
+        }
         _ => ADOContract::default()
             .execute(ctx, msg)
             .map_err(|err| err.into()),
