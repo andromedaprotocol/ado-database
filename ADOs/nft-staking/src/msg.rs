@@ -30,7 +30,7 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    Receive(Cw721ReceiveMsg),
+    ReceiveNft(Cw721ReceiveMsg),
     ClaimReward {
         nft_address: String,
         token_id: String,

@@ -1,7 +1,7 @@
 use andromeda_std::{
     ado_base::InstantiateMsg as BaseInstantiateMsg,
     ado_contract::ADOContract,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -59,7 +59,6 @@ pub fn instantiate(
     )?;
 
     set_rewards_per_token(deps.storage, msg.rewards_per_token)?;
-
     Ok(resp
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -81,17 +80,9 @@ pub fn execute(
     // }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     let res = match msg {
-        ExecuteMsg::Receive(msg) => execute::receive_cw721(ctx, msg),
+        ExecuteMsg::ReceiveNft(msg) => execute::receive_cw721(ctx, msg),
         ExecuteMsg::ClaimReward {
             nft_address,
             token_id,
@@ -112,10 +103,7 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
             .map_err(|err| err.into()),
     }?;
 
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

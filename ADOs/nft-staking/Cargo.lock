@@ -84,6 +84,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
+name = "bech32"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
+
+[[package]]
 name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,7 +191,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78c1556156fdf892a55cced6115968b961eaaadd6f724a2c2cb7d1e168e32dd3"
 dependencies = [
  "base64",
- "bech32",
+ "bech32 0.9.1",
  "bnum",
  "cosmwasm-crypto",
  "cosmwasm-derive",
@@ -269,16 +275,17 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "0.17.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d818f5323c80ed4890db7f89d65eda3f0261fe21878e628c27ea2d8de4b7ba4"
+checksum = "91fc33b1d65c102d72f46548c64dca423c337e528d6747d0c595316aa65f887b"
 dependencies = [
  "anyhow",
+ "bech32 0.11.0",
  "cosmwasm-std",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "derivative",
- "itertools 0.11.0",
+ "itertools 0.13.0",
  "prost",
  "schemars",
  "serde",
@@ -678,18 +685,18 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.11.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
 
 [[package]]
 name = "itertools"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -737,6 +744,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
  "cw721 0.18.0",
+ "cw721-base 0.18.0",
  "schemars",
  "serde",
  "thiserror",

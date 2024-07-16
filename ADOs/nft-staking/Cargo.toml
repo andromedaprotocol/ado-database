@@ -49,4 +49,5 @@ andromeda-std = { version = "1.0.0-rc1" }
 cw721 = "0.18.0"
 
 [dev-dependencies]
-cw-multi-test = "0.17.0"
+cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_3"] }
+cw721-base = "0.18.0"
