@@ -60,7 +60,10 @@ pub fn get_rewards_per_token(store: &dyn Storage) -> Result<Vec<(String, u128)>,
         .collect())
 }
 
-pub fn get_staker_detail(store: &dyn Storage, staker: Addr) -> Result<StakerDetails, ContractError> {
+pub fn get_staker_detail(
+    store: &dyn Storage,
+    staker: Addr,
+) -> Result<StakerDetails, ContractError> {
     let staker_detail = STAKER_DETAILS.load(store, &staker)?;
     Ok(staker_detail)
 }
@@ -95,7 +98,8 @@ pub fn process_pending_rewards(
     let config = CONFIG.load(store).unwrap_or_default();
     let remainder = unpaid_duration % config.payout_window.nanos();
     asset_detail.pending_rewards = Uint128::zero();
-    asset_detail.updated_at = Milliseconds::from_nanos(block.time.nanos().checked_sub(remainder).unwrap());
+    asset_detail.updated_at =
+        Milliseconds::from_nanos(block.time.nanos().checked_sub(remainder).unwrap());
     ASSET_DETAILS.save(store, (nft_address, token_id), &asset_detail)?;
     Ok(pending_rewards)
 }
@@ -117,7 +121,11 @@ pub fn calculate_pending_rewards(
         .unwrap_or_default() as u128;
     let config = CONFIG.load(store).unwrap_or_default();
 
-    let window_count = Uint128::new(unpaid_duration.checked_div(config.payout_window.nanos() as u128).unwrap());
+    let window_count = Uint128::new(
+        unpaid_duration
+            .checked_div(config.payout_window.nanos() as u128)
+            .unwrap(),
+    );
 
     let reward_per_window = REWARDS_PER_TOKEN
         .load(store, &asset_detail.nft_address)

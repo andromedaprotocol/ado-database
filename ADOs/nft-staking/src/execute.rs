@@ -2,7 +2,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     common::{context::ExecuteContext, encode_binary, Milliseconds},
 };
-use cosmwasm_std::{coin, ensure, Addr, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
+use cosmwasm_std::{coin, ensure, BankMsg, CosmosMsg, Response, Uint128, WasmMsg};
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
 
 use crate::{
@@ -279,9 +279,15 @@ mod tests {
             mock_dependencies_with_balance, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
             MOCK_CONTRACT_ADDR,
         },
-        Binary, Empty, OwnedDeps,
+        Addr, Binary, Empty, OwnedDeps,
     };
     use cw721::Cw721ReceiveMsg;
+    use cw_multi_test::MockApiBech32;
+
+    fn generate_mock_address(input: &str) -> Addr {
+        MockApiBech32::new("andr").addr_make(input)
+    }
+
     const STAKER: &str = "STAKER";
 
     fn inst() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
@@ -311,8 +317,9 @@ mod tests {
     #[test]
     fn test_stake() {
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -327,7 +334,7 @@ mod tests {
         let res = receive_cw721(ctx, cw721_msg);
         assert!(res.is_ok());
 
-        let res = query_staker_detail(deps.as_ref(), env.clone(), STAKER.to_string()).unwrap();
+        let res = query_staker_detail(deps.as_ref(), env.clone(), staker.to_string()).unwrap();
 
         assert_eq!(res.pending_rewards, 0);
         assert_eq!(
@@ -356,8 +363,9 @@ mod tests {
     #[test]
     fn test_stake_invalid_token() {
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -381,8 +389,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -393,7 +402,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // claim reward
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(&staker.to_string(), &[]);
         let window_cnt = Milliseconds::from_seconds(100).nanos() / config.payout_window.nanos();
         let updated_at = env.block.time.nanos() + window_cnt * config.payout_window.nanos();
 
@@ -407,7 +416,7 @@ mod tests {
                 .add_attribute("nft_address", MOCK_CONTRACT_ADDR.to_string())
                 .add_attribute("token_id", token_id.clone())
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: STAKER.to_string(),
+                    to_address: staker.to_string(),
                     amount: vec![coin(window_cnt as u128 * 1u128, "earth")],
                 }))
         );
@@ -429,8 +438,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -443,7 +453,7 @@ mod tests {
         // Other one stake token 2
         let token_id = "2".to_string();
         let cw721_msg = Cw721ReceiveMsg {
-            sender: "other".to_string(),
+            sender: generate_mock_address("other").to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -454,7 +464,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // STAKER claim other one's reward
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let err = claim_reward(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
@@ -467,8 +477,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -479,7 +490,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // claim reward
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let err = claim_reward(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id).unwrap_err();
 
@@ -494,8 +505,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -506,7 +518,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         let window_cnt = Milliseconds::from_seconds(100).nanos() / config.payout_window.nanos();
         let updated_at = env.block.time.nanos() + window_cnt * config.payout_window.nanos();
 
@@ -539,8 +551,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -553,7 +566,7 @@ mod tests {
         // Other one stake token 2
         let token_id = "2".to_string();
         let cw721_msg = Cw721ReceiveMsg {
-            sender: "other".to_string(),
+            sender: generate_mock_address("other").to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -564,7 +577,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // STAKER unstake other one's reward
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let err = unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});
@@ -577,8 +590,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -589,7 +603,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         env.block.time = env.block.time.plus_seconds(100);
         let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap();
@@ -609,8 +623,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -621,7 +636,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
 
         env.block.time = env.block.time.plus_seconds(100);
         let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
@@ -645,19 +660,20 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
 
         let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
 
-        let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
+        let ctx: ExecuteContext = ExecuteContext::new(deps.as_mut(), info, env.clone());
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let err = claim_asset(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap_err();
         assert_eq!(err, ContractError::AssetNotUnkstaked {});
@@ -670,8 +686,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -682,7 +699,7 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
 
         env.block.time = env.block.time.plus_seconds(100);
         let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
@@ -705,8 +722,9 @@ mod tests {
 
         // STAKER stake token 1
         let token_id = "1".to_string();
+        let staker = generate_mock_address(STAKER);
         let cw721_msg = Cw721ReceiveMsg {
-            sender: STAKER.to_string(),
+            sender: staker.to_string(),
             token_id: token_id.clone(),
             msg: Binary::default(),
         };
@@ -718,7 +736,7 @@ mod tests {
 
         // other one stake token 2
         let cw721_msg = Cw721ReceiveMsg {
-            sender: "other".to_string(),
+            sender: generate_mock_address("other").to_string(),
             token_id: "2".to_string(),
             msg: Binary::default(),
         };
@@ -729,14 +747,14 @@ mod tests {
         receive_cw721(ctx, cw721_msg).unwrap();
 
         // unstake
-        let info = mock_info(STAKER, &[]);
+        let info = mock_info(staker.as_str(), &[]);
 
         env.block.time = env.block.time.plus_seconds(100);
         let ctx = ExecuteContext::new(deps.as_mut(), info, env.clone());
         unstake(ctx, MOCK_CONTRACT_ADDR.to_string(), token_id.clone()).unwrap();
 
         // claim asset
-        let info = mock_info("other", &[]);
+        let info = mock_info(generate_mock_address("other").as_str(), &[]);
         let config = query_config(deps.as_ref()).unwrap();
         env.block.time = env
             .block
