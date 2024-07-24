@@ -9,8 +9,8 @@ use crate::{
     config::MIN_UNBONDING_PERIOD,
     query::query_config,
     state::{
-        get_asset_detail, get_staker_detail, process_pending_rewards, AssetDetail, Config,
-        StakerDetail, ASSET_DETAILS, CONFIG, REWARDS_PER_TOKEN, STAKER_DETAILS,
+        get_asset_detail, get_staker_detail, process_pending_rewards, AssetDetails, Config,
+        StakerDetails, ASSET_DETAILS, CONFIG, REWARDS_PER_TOKEN, STAKER_DETAILS,
     },
     ContractError,
 };
@@ -50,7 +50,7 @@ pub fn receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Respon
     ASSET_DETAILS.save(
         deps.storage,
         asset_id,
-        &AssetDetail {
+        &AssetDetails {
             nft_address: nft_address.to_string(),
             token_id: token_id.clone(),
             unbonding_period: config.unbonding_period,
@@ -191,7 +191,7 @@ pub fn claim_asset(
     STAKER_DETAILS.save(
         deps.storage,
         &info.sender,
-        &StakerDetail {
+        &StakerDetails {
             assets: staked_assets,
         },
     )?;

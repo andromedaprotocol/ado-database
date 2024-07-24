@@ -11,7 +11,7 @@ use cw721::Cw721ReceiveMsg;
 use crate::{
     config::{MIN_PAYOUT_WINDOW, MIN_UNBONDING_PERIOD},
     error::ContractError,
-    state::AssetDetail,
+    state::AssetDetails,
 };
 
 #[andr_instantiate]
@@ -126,5 +126,5 @@ pub struct StakerDetailResponse {
 }
 #[cw_serde]
 pub struct AssetDetailResponse {
-    pub asset_detail: AssetDetail,
+    pub asset_detail: AssetDetails,
 }

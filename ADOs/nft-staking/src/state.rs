@@ -15,14 +15,14 @@ pub struct Config {
 
 #[cw_serde]
 #[derive(Default)]
-pub struct StakerDetail {
+pub struct StakerDetails {
     // list of staked nft assets as (nft_address, nft_id)
     pub assets: Vec<(String, String)>,
 }
 
 #[cw_serde]
 #[derive(Default)]
-pub struct AssetDetail {
+pub struct AssetDetails {
     pub nft_address: String,
     pub token_id: String,
     pub unbonding_period: Milliseconds,
@@ -35,9 +35,9 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const REWARDS_PER_TOKEN: Map<&str, Uint128> = Map::new("rewards_per_token");
 
-pub const STAKER_DETAILS: Map<&Addr, StakerDetail> = Map::new("staker_details");
+pub const STAKER_DETAILS: Map<&Addr, StakerDetails> = Map::new("staker_details");
 
-pub const ASSET_DETAILS: Map<(String, String), AssetDetail> = Map::new("asset_details");
+pub const ASSET_DETAILS: Map<(String, String), AssetDetails> = Map::new("asset_details");
 
 pub fn set_rewards_per_token(
     store: &mut dyn Storage,
@@ -60,7 +60,7 @@ pub fn get_rewards_per_token(store: &dyn Storage) -> Result<Vec<(String, u128)>,
         .collect())
 }
 
-pub fn get_staker_detail(store: &dyn Storage, staker: Addr) -> Result<StakerDetail, ContractError> {
+pub fn get_staker_detail(store: &dyn Storage, staker: Addr) -> Result<StakerDetails, ContractError> {
     let staker_detail = STAKER_DETAILS.load(store, &staker)?;
     Ok(staker_detail)
 }
@@ -70,7 +70,7 @@ pub fn get_asset_detail(
     block: &BlockInfo,
     nft_address: String,
     token_id: String,
-) -> Result<AssetDetail, ContractError> {
+) -> Result<AssetDetails, ContractError> {
     let mut asset_detail = ASSET_DETAILS.load(store, (nft_address, token_id))?;
     asset_detail.pending_rewards = calculate_pending_rewards(store, block, asset_detail.clone());
     Ok(asset_detail)
@@ -95,7 +95,7 @@ pub fn process_pending_rewards(
     let config = CONFIG.load(store).unwrap_or_default();
     let remainder = unpaid_duration % config.payout_window.nanos();
     asset_detail.pending_rewards = Uint128::zero();
-    asset_detail.updated_at = Milliseconds::from_nanos(block.time.nanos() - remainder);
+    asset_detail.updated_at = Milliseconds::from_nanos(block.time.nanos().checked_sub(remainder).unwrap());
     ASSET_DETAILS.save(store, (nft_address, token_id), &asset_detail)?;
     Ok(pending_rewards)
 }
@@ -103,7 +103,7 @@ pub fn process_pending_rewards(
 pub fn calculate_pending_rewards(
     store: &dyn Storage,
     block: &BlockInfo,
-    asset_detail: AssetDetail,
+    asset_detail: AssetDetails,
 ) -> Uint128 {
     // For nfts in unbonding period, just return original pending rewards
     if asset_detail.unstaked_at.is_some() {
@@ -117,7 +117,7 @@ pub fn calculate_pending_rewards(
         .unwrap_or_default() as u128;
     let config = CONFIG.load(store).unwrap_or_default();
 
-    let window_count = Uint128::new(unpaid_duration / config.payout_window.nanos() as u128);
+    let window_count = Uint128::new(unpaid_duration.checked_div(config.payout_window.nanos() as u128).unwrap());
 
     let reward_per_window = REWARDS_PER_TOKEN
         .load(store, &asset_detail.nft_address)
