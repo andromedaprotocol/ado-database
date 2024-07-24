@@ -21,7 +21,7 @@ pub fn receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Respon
     } = ctx;
     let nft_address = info.sender;
     let staker = msg.sender;
-    let staker_addr = Addr::unchecked(staker.clone());
+    let staker_addr = deps.api.addr_validate(&staker)?;
     let token_id = msg.token_id;
 
     ensure!(
