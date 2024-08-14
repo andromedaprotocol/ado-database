@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsLockedResponse",
+  "type": "object",
+  "required": [
+    "is_locked"
+  ],
+  "properties": {
+    "is_locked": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

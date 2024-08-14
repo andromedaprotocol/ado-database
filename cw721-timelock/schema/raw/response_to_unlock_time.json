@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnlockTimeResponse",
+  "type": "object",
+  "required": [
+    "unlock_time"
+  ],
+  "properties": {
+    "unlock_time": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}
